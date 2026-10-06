@@ -1,26 +1,25 @@
 import heapq
 
-def calculate_misplaced_tiles(state, goal_state=(1, 2, 3, 4, 5, 6, 7, 8, 0)):
-    """
-    Counts how many tiles are not in their correct goal position.
-    The blank space (0) is not counted as a misplaced tile.
-    """
-    count = 0
+def manhattan_distance(state, goal_state):
+    distance = 0
     for i in range(9):
-        if state[i] != 0: # Ignore the blank space
-            if state[i] != goal_state[i]:
-                count += 1
-    return count
+        val = state[i]
+        if val != 0:
+            goal_idx = goal_state.index(val)
+            curr_r, curr_c = divmod(i, 3)
+            goal_r, goal_c = divmod(goal_idx, 3)
+            distance += abs(curr_r - goal_r) + abs(curr_c - goal_c)
+    return distance
 
 def get_neighbors(state):
     neighbors = []
     zero_idx = state.index(0)
     r, c = divmod(zero_idx, 3)
     
-    # Grid movements for the empty slot (0): Up, Down, Left, Right
+    # Possible movements for the empty tile (0): up, down, left, right
     for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
         nr, nc = r + dr, c + dc
-        if 0 <= nr < 3 and 0 <= nr < 3:
+        if 0 <= nr < 3 and 0 <= nc < 3:
             n_idx = nr * 3 + nc
             new_state = list(state)
             new_state[zero_idx], new_state[n_idx] = new_state[n_idx], new_state[zero_idx]
@@ -28,21 +27,15 @@ def get_neighbors(state):
             
     return neighbors
 
-def solve_8_puzzle_misplaced(start_state, goal_state= (1,2,3,8,0,4,7,6,5)):
-    # open_list stores: (f_score, g_score, current_state, path_history)
+def solve_8_puzzle(start_state, goal_state=(1,2,3,8,0,4,7,6,5)):
+    # Priority queue stores tuples: (f_score, g_score, state, path)
     open_list = []
-    h_init = calculate_misplaced_tiles(start_state, goal_state)
+    h_init = manhattan_distance(start_state, goal_state)
     heapq.heappush(open_list, (h_init, 0, start_state, [start_state]))
     
     g_scores = {start_state: 0}
     closed_set = set()
     
-    print(f"--- Initial State Evaluation ---")
-    print(f"Board: {start_state}")
-    print(f"Initial Misplaced Tiles Count (h): {h_init}\n")
-    
-    debug_counter = 0
-
     while open_list:
         f, g, current, path = heapq.heappop(open_list)
         
@@ -53,12 +46,6 @@ def solve_8_puzzle_misplaced(start_state, goal_state= (1,2,3,8,0,4,7,6,5)):
             continue
         closed_set.add(current)
         
-        # Log the first 3 nodes pulled from the priority queue to visualize the heuristic
-        if debug_counter < 3:
-            print(f"[Queue Pop] Evaluating state with lowest f={f} (g={g}, h={f-g})")
-            print(f"  Layout: {current[0:3]} | {current[3:6]} | {current[6:9]}")
-            debug_counter += 1
-        
         for neighbor in get_neighbors(current):
             if neighbor in closed_set:
                 continue
@@ -66,21 +53,26 @@ def solve_8_puzzle_misplaced(start_state, goal_state= (1,2,3,8,0,4,7,6,5)):
             tentative_g = g + 1
             if tentative_g < g_scores.get(neighbor, float('inf')):
                 g_scores[neighbor] = tentative_g
-                h_score = calculate_misplaced_tiles(neighbor, goal_state)
-                f_score = tentative_g + h_score
+                f_score = tentative_g + manhattan_distance(neighbor, goal_state)
                 heapq.heappush(open_list, (f_score, tentative_g, neighbor, path + [neighbor]))
                 
     return None
 
-# --- YOUR HARDCODED TARGET STATE ---
-initial_board = (2, 8, 3, 
-                 1, 6, 4, 
-                 0, 7, 5)
+# Example initial state (0 represents the blank space)
+# Solvable configuration:
+initial_board =  (2,8,3,
+                  1,6,4,
+                  0,7,5)
 
-solution_path = solve_8_puzzle_misplaced(initial_board)
+solution_path = solve_8_puzzle(initial_board)
 
-print("\n--- Final Status ---")
 if solution_path:
-    print(f"Solved in {len(solution_path) - 1} steps!")
+    print(f"Total steps to solve: {len(solution_path) - 1}")
+    for step, board in enumerate(solution_path):
+        print(f"Step {step}:")
+        print(board[0:3])
+        print(board[3:6])
+        print(board[6:9])
+        print()
 else:
-    print("No solution found. This layout is mathematically unsolvable.")
+    print("No solution found.")
